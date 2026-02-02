@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { PROPOSAL_CONFIGS, TEMPLATES, ProposalType, TemplateId } from '@/types/proposal';
 import { createProposal } from '@/lib/proposals';
 
-// Component that uses useSearchParams
 function CreateFormContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   
   const typeParam = searchParams.get('type') as ProposalType | null;
   const proposalType = typeParam && PROPOSAL_CONFIGS[typeParam] ? typeParam : 'valentine';
@@ -19,7 +17,6 @@ function CreateFormContent() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     proposerName: '',
-    proposerEmail: '',
     recipientName: '',
     message: '',
     template: 'romantic' as TemplateId,
@@ -37,7 +34,7 @@ function CreateFormContent() {
       const proposalId = await createProposal({
         type: proposalType,
         proposerName: formData.proposerName,
-        proposerEmail: formData.proposerEmail,
+        proposerEmail: '', // Empty - not using email anymore
         recipientName: formData.recipientName,
         message: formData.message,
         template: formData.template,
@@ -56,20 +53,31 @@ function CreateFormContent() {
 
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
-    alert('Link copied to clipboard! 💕');
   };
 
-  const isValidEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const [copiedShare, setCopiedShare] = useState(false);
+  const [copiedStatus, setCopiedStatus] = useState(false);
+
+  const handleCopyShare = () => {
+    if (generatedLink) {
+      copyLink(generatedLink);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    }
+  };
+
+  const handleCopyStatus = () => {
+    if (statusLink) {
+      copyLink(statusLink);
+      setCopiedStatus(true);
+      setTimeout(() => setCopiedStatus(false), 2000);
+    }
   };
 
   const isStepValid = (s: number) => {
     switch (s) {
       case 1:
-        return formData.proposerName.trim() && 
-               formData.proposerEmail.trim() && 
-               isValidEmail(formData.proposerEmail) &&
-               formData.recipientName.trim();
+        return formData.proposerName.trim() && formData.recipientName.trim();
       case 2:
         return formData.message.trim();
       default:
@@ -77,82 +85,98 @@ function CreateFormContent() {
     }
   };
 
-  // Success state - show generated link and status link
+  // Success state
   if (generatedLink && statusLink) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-lg mx-auto text-center"
       >
-        <div className="text-6xl mb-6">🎉</div>
-        <h2 className="font-display text-3xl font-bold text-gray-800 mb-4">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+          className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
+        >
+          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </motion.div>
+        
+        <h2 className="font-display text-3xl font-bold text-gray-800 mb-3">
           Your proposal is ready!
         </h2>
         <p className="text-gray-600 mb-8">
-          Share the proposal link with {formData.recipientName} and wait for the magic ✨
+          Share the link with {formData.recipientName} and wait for the magic to happen.
         </p>
 
-        {/* Proposal Link */}
-        <div className="bg-white rounded-xl p-4 shadow-md mb-4">
-          <p className="text-sm text-gray-500 mb-2">📤 Share this link with {formData.recipientName}:</p>
+        {/* Share Link */}
+        <div className="bg-white rounded-2xl p-5 shadow-lg mb-4 text-left">
+          <p className="text-sm font-medium text-gray-700 mb-3">Send this link to {formData.recipientName}:</p>
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={generatedLink}
               readOnly
-              className="flex-1 p-3 bg-gray-50 rounded-lg text-sm font-mono"
+              className="flex-1 p-3 bg-gray-50 rounded-xl text-sm font-mono text-gray-600"
             />
             <button
-              onClick={() => copyLink(generatedLink)}
-              className="p-3 bg-valentine-500 text-white rounded-lg hover:bg-valentine-600 transition"
+              onClick={handleCopyShare}
+              className={`px-4 py-3 rounded-xl font-medium transition-all ${
+                copiedShare 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-valentine-500 text-white hover:bg-valentine-600'
+              }`}
             >
-              📋
+              {copiedShare ? 'Copied!' : 'Copy'}
             </button>
           </div>
         </div>
 
         {/* Status Link */}
-        <div className="bg-blue-50 rounded-xl p-4 shadow-md mb-6">
-          <p className="text-sm text-blue-600 mb-2">🔒 Your private status page (don&apos;t share!):</p>
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 shadow-lg mb-8 text-left">
+          <p className="text-sm font-medium text-gray-700 mb-1">Your private status page:</p>
+          <p className="text-xs text-gray-500 mb-3">Check here to see when they respond (don&apos;t share this)</p>
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={statusLink}
               readOnly
-              className="flex-1 p-3 bg-white rounded-lg text-sm font-mono"
+              className="flex-1 p-3 bg-white rounded-xl text-sm font-mono text-gray-600"
             />
             <button
-              onClick={() => copyLink(statusLink)}
-              className="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+              onClick={handleCopyStatus}
+              className={`px-4 py-3 rounded-xl font-medium transition-all ${
+                copiedStatus 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
             >
-              📋
+              {copiedStatus ? 'Copied!' : 'Copy'}
             </button>
           </div>
-          <p className="text-xs text-blue-500 mt-2">
-            You&apos;ll also receive an email when {formData.recipientName} responds!
-          </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href={`https://wa.me/?text=${encodeURIComponent(`I have something special for you 💕 ${generatedLink}`)}`}
+            href={`https://wa.me/?text=${encodeURIComponent(`I have something special for you... ${generatedLink}`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-6 py-3 bg-green-500 text-white rounded-full font-semibold hover:bg-green-600 transition"
+            className="px-6 py-3 bg-green-500 text-white rounded-full font-medium hover:bg-green-600 transition"
           >
-            Share on WhatsApp 💬
+            Share on WhatsApp
           </a>
           <Link
             href={generatedLink.replace(typeof window !== 'undefined' ? window.location.origin : '', '')}
-            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition"
+            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-full font-medium hover:bg-gray-200 transition"
           >
-            Preview Proposal 👀
+            Preview
           </Link>
         </div>
 
         <p className="mt-8 text-sm text-gray-400">
-          ⏰ This link expires in 5 days
+          This link will expire in 5 days
         </p>
       </motion.div>
     );
@@ -162,36 +186,44 @@ function CreateFormContent() {
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="text-center mb-8">
-        <Link href="/" className="inline-block text-gray-500 hover:text-gray-700 mb-4">
+        <Link href="/" className="inline-block text-gray-400 hover:text-gray-600 mb-6 text-sm">
           ← Back to home
         </Link>
-        <div className="text-4xl mb-2">{config.emoji}</div>
-        <h1 className="font-display text-3xl font-bold text-gray-800">
+        <div className="text-4xl mb-3">{config.emoji}</div>
+        <h1 className="font-display text-3xl font-bold text-gray-800 mb-2">
           {config.headline}
         </h1>
-        <p className="text-gray-600 mt-2">Let&apos;s create something beautiful together</p>
+        <p className="text-gray-500">Create something beautiful</p>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex justify-center gap-2 mb-8">
+      {/* Progress */}
+      <div className="flex justify-center gap-3 mb-10">
         {[1, 2].map((s) => (
-          <div
-            key={s}
-            className={`w-3 h-3 rounded-full transition-all ${
-              step >= s ? 'bg-valentine-500' : 'bg-gray-200'
-            }`}
-          />
+          <div key={s} className="flex items-center gap-3">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                step >= s 
+                  ? 'bg-valentine-500 text-white' 
+                  : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              {s}
+            </div>
+            {s < 2 && (
+              <div className={`w-12 h-0.5 ${step > s ? 'bg-valentine-500' : 'bg-gray-200'}`} />
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-center">
+        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-center text-sm">
           {error}
         </div>
       )}
 
-      {/* Form Steps */}
+      {/* Form */}
       <AnimatePresence mode="wait">
         {step === 1 && (
           <motion.div
@@ -199,13 +231,13 @@ function CreateFormContent() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
+            className="bg-white rounded-3xl p-8 shadow-xl"
           >
-            <h2 className="font-display text-xl font-semibold mb-6">
-              Who&apos;s this proposal from and to? 💕
+            <h2 className="font-display text-xl font-semibold text-gray-800 mb-6">
+              Who is this for?
             </h2>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Your name
@@ -215,24 +247,8 @@ function CreateFormContent() {
                   placeholder="Enter your name"
                   value={formData.proposerName}
                   onChange={(e) => setFormData(prev => ({ ...prev, proposerName: e.target.value }))}
-                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-300 focus:border-valentine-300 outline-none transition"
+                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-200 focus:border-valentine-400 outline-none transition"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your email <span className="text-gray-400">(for notifications)</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  value={formData.proposerEmail}
-                  onChange={(e) => setFormData(prev => ({ ...prev, proposerEmail: e.target.value }))}
-                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-300 focus:border-valentine-300 outline-none transition"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  We&apos;ll notify you when they respond 📧
-                </p>
               </div>
 
               <div>
@@ -244,7 +260,7 @@ function CreateFormContent() {
                   placeholder="Enter their name"
                   value={formData.recipientName}
                   onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
-                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-300 focus:border-valentine-300 outline-none transition"
+                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-200 focus:border-valentine-400 outline-none transition"
                 />
               </div>
             </div>
@@ -257,10 +273,10 @@ function CreateFormContent() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
+            className="bg-white rounded-3xl p-8 shadow-xl"
           >
-            <h2 className="font-display text-xl font-semibold mb-6">
-              Write your heartfelt message 💌
+            <h2 className="font-display text-xl font-semibold text-gray-800 mb-6">
+              Write your message
             </h2>
 
             <textarea
@@ -268,12 +284,8 @@ function CreateFormContent() {
               value={formData.message}
               onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
               rows={6}
-              className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-300 focus:border-valentine-300 outline-none transition resize-none"
+              className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-200 focus:border-valentine-400 outline-none transition resize-none mb-6"
             />
-
-            <p className="text-sm text-gray-400 mt-2 mb-6">
-              Tip: Be genuine and speak from the heart 💗
-            </p>
 
             {/* Template Selection */}
             <h3 className="font-medium text-gray-700 mb-3">Choose a style</h3>
@@ -285,11 +297,11 @@ function CreateFormContent() {
                   className={`p-4 rounded-xl border-2 text-left transition ${
                     formData.template === template.id
                       ? 'border-valentine-500 bg-valentine-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-100 hover:border-gray-200'
                   }`}
                 >
                   <p className="font-medium text-gray-800">{template.name}</p>
-                  <p className="text-sm text-gray-500">{template.description}</p>
+                  <p className="text-xs text-gray-500">{template.description}</p>
                 </button>
               ))}
             </div>
@@ -297,8 +309,8 @@ function CreateFormContent() {
         )}
       </AnimatePresence>
 
-      {/* Navigation Buttons */}
-      <div className="flex justify-between mt-6">
+      {/* Navigation */}
+      <div className="flex justify-between mt-8">
         <button
           onClick={() => setStep(prev => Math.max(1, prev - 1))}
           className={`px-6 py-3 rounded-full font-medium transition ${
@@ -308,7 +320,7 @@ function CreateFormContent() {
           }`}
           disabled={step === 1}
         >
-          ← Back
+          Back
         </button>
 
         {step < 2 ? (
@@ -318,10 +330,10 @@ function CreateFormContent() {
             className={`px-8 py-3 rounded-full font-semibold transition ${
               isStepValid(step)
                 ? 'bg-valentine-500 text-white hover:bg-valentine-600'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
-            Next →
+            Continue
           </button>
         ) : (
           <button
@@ -329,35 +341,22 @@ function CreateFormContent() {
             disabled={isSubmitting || !isStepValid(step)}
             className={`px-8 py-3 rounded-full font-semibold transition flex items-center gap-2 ${
               isSubmitting || !isStepValid(step)
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-valentine-500 to-pink-500 text-white hover:shadow-lg'
             }`}
           >
-            {isSubmitting ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                Creating...
-              </>
-            ) : (
-              <>
-                Create Proposal ✨
-              </>
-            )}
+            {isSubmitting ? 'Creating...' : 'Create Proposal'}
           </button>
         )}
       </div>
 
-      {/* Disclaimer */}
-      <p className="text-center text-sm text-gray-400 mt-8">
-        ⏰ Your proposal will be automatically deleted after 5 days
-        <br />
-        to keep the platform free for everyone.
+      <p className="text-center text-xs text-gray-400 mt-8">
+        Proposals are automatically deleted after 5 days to keep the platform free.
       </p>
     </div>
   );
 }
 
-// Loading fallback
 function CreateFormLoading() {
   return (
     <div className="max-w-2xl mx-auto text-center py-12">
@@ -372,7 +371,7 @@ function CreateFormLoading() {
 
 export default function CreatePage() {
   return (
-    <main className="min-h-screen py-12 px-4">
+    <main className="min-h-screen py-12 px-4 bg-gradient-to-br from-rose-50 via-white to-pink-50">
       <Suspense fallback={<CreateFormLoading />}>
         <CreateFormContent />
       </Suspense>

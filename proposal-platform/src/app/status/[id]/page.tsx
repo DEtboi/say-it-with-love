@@ -6,25 +6,23 @@ import Link from 'next/link';
 import { PROPOSAL_CONFIGS, ProposalType, Proposal } from '@/types/proposal';
 import { getProposal, isProposalExpired, getTimeRemaining } from '@/lib/proposals';
 
-// Loading Screen
 const LoadingScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
     <motion.div
-      animate={{ scale: [1, 1.2, 1] }}
-      transition={{ duration: 1.5, repeat: Infinity }}
-      className="text-6xl"
-    >
-      ⏳
-    </motion.div>
+      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+      transition={{ duration: 2, repeat: Infinity }}
+      className="w-16 h-16 rounded-full bg-blue-200"
+    />
   </div>
 );
 
-// Not Found Screen
 const NotFoundScreen = () => (
   <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-    <div className="text-center">
-      <div className="text-6xl mb-6">🔍</div>
-      <h1 className="font-display text-3xl font-bold text-gray-800 mb-4">
+    <div className="text-center max-w-md">
+      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <span className="text-2xl text-gray-400">?</span>
+      </div>
+      <h1 className="font-display text-2xl font-bold text-gray-800 mb-4">
         Proposal not found
       </h1>
       <p className="text-gray-600 mb-8">
@@ -32,20 +30,21 @@ const NotFoundScreen = () => (
       </p>
       <Link
         href="/"
-        className="inline-block px-6 py-3 bg-valentine-500 text-white rounded-full font-semibold hover:bg-valentine-600 transition"
+        className="inline-block px-6 py-3 bg-valentine-500 text-white rounded-full font-medium hover:bg-valentine-600 transition"
       >
-        Create a new proposal 💕
+        Create a new one
       </Link>
     </div>
   </main>
 );
 
-// Expired Screen
 const ExpiredScreen = () => (
   <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-    <div className="text-center">
-      <div className="text-6xl mb-6">💔</div>
-      <h1 className="font-display text-3xl font-bold text-gray-800 mb-4">
+    <div className="text-center max-w-md">
+      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <span className="text-2xl text-gray-400">♡</span>
+      </div>
+      <h1 className="font-display text-2xl font-bold text-gray-800 mb-4">
         This proposal has expired
       </h1>
       <p className="text-gray-600 mb-8">
@@ -53,9 +52,9 @@ const ExpiredScreen = () => (
       </p>
       <Link
         href="/"
-        className="inline-block px-6 py-3 bg-valentine-500 text-white rounded-full font-semibold hover:bg-valentine-600 transition"
+        className="inline-block px-6 py-3 bg-valentine-500 text-white rounded-full font-medium hover:bg-valentine-600 transition"
       >
-        Create a new proposal 💕
+        Create a new one
       </Link>
     </div>
   </main>
@@ -68,7 +67,6 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // Fetch proposal data
   useEffect(() => {
     async function fetchProposal() {
       try {
@@ -89,55 +87,42 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
     fetchProposal();
   }, [id]);
 
-  // Auto-refresh every 30 seconds if waiting for response
+  // Auto-refresh every 30 seconds if waiting
   useEffect(() => {
     if (!proposal || proposal.response) return;
     
     const interval = setInterval(async () => {
       try {
         const data = await getProposal(id);
-        if (data) {
-          setProposal(data);
-        }
+        if (data) setProposal(data);
       } catch (err) {
-        console.error('Error refreshing proposal:', err);
+        console.error('Error refreshing:', err);
       }
-    }, 30000); // 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [id, proposal]);
 
-  // Loading state
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  // Error state
-  if (error || !proposal) {
-    return <NotFoundScreen />;
-  }
-
-  // Check if expired
-  if (isProposalExpired(proposal)) {
-    return <ExpiredScreen />;
-  }
+  if (loading) return <LoadingScreen />;
+  if (error || !proposal) return <NotFoundScreen />;
+  if (isProposalExpired(proposal)) return <ExpiredScreen />;
 
   const config = PROPOSAL_CONFIGS[proposal.type];
   const timeRemaining = getTimeRemaining(proposal.expiresAt);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-12 px-4">
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block text-gray-500 hover:text-gray-700 mb-4">
+          <Link href="/" className="inline-block text-gray-400 hover:text-gray-600 mb-6 text-sm">
             ← Back to home
           </Link>
-          <h1 className="font-display text-3xl font-bold text-gray-800">
-            Proposal Status 📊
+          <h1 className="font-display text-2xl font-bold text-gray-800 mb-2">
+            Proposal Status
           </h1>
-          <p className="text-gray-600 mt-2">
-            Keep track of your proposal to {proposal.recipientName}
+          <p className="text-gray-500">
+            Your proposal to {proposal.recipientName}
           </p>
         </div>
 
@@ -145,38 +130,41 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-lg mb-6"
+          className="bg-white rounded-3xl p-8 shadow-xl mb-6"
         >
           {/* Proposal Info */}
-          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-            <div className="text-4xl">{config.emoji}</div>
+          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-100">
+            <div className="text-3xl">{config.emoji}</div>
             <div>
               <h2 className="font-semibold text-gray-800">{config.headline}</h2>
               <p className="text-sm text-gray-500">
-                To: {proposal.recipientName} • From: {proposal.proposerName}
+                From {proposal.proposerName} to {proposal.recipientName}
               </p>
             </div>
           </div>
 
-          {/* Status */}
-          <div className="text-center py-6">
+          {/* Status Display */}
+          <div className="text-center py-8">
             {proposal.response === 'yes' ? (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200 }}
               >
-                <div className="text-6xl mb-4">🎉</div>
-                <h3 className="font-display text-2xl font-bold text-green-600 mb-2">
-                  They said YES!
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="font-display text-2xl font-bold text-green-600 mb-3">
+                  They said yes!
                 </h3>
                 <p className="text-gray-600">
-                  Congratulations! {proposal.recipientName} accepted your proposal!
+                  Congratulations! {proposal.recipientName} accepted your proposal.
                 </p>
                 {proposal.respondedAt && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    Responded on {proposal.respondedAt.toLocaleDateString()} at{' '}
-                    {proposal.respondedAt.toLocaleTimeString()}
+                  <p className="text-sm text-gray-400 mt-4">
+                    {proposal.respondedAt.toLocaleDateString()} at {proposal.respondedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 )}
               </motion.div>
@@ -185,73 +173,73 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
               >
-                <div className="text-6xl mb-4">💙</div>
-                <h3 className="font-display text-2xl font-bold text-gray-600 mb-2">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-3xl text-blue-400">♡</span>
+                </div>
+                <h3 className="font-display text-2xl font-bold text-gray-600 mb-3">
                   They responded
                 </h3>
                 <p className="text-gray-600">
-                  {proposal.recipientName} has seen your proposal and responded.
+                  {proposal.recipientName} has seen your proposal.
                   <br />
-                  Whatever happens, you were brave enough to ask. 💙
+                  <span className="text-gray-400">Whatever happens, you were brave enough to ask.</span>
                 </p>
                 {proposal.respondedAt && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    Responded on {proposal.respondedAt.toLocaleDateString()} at{' '}
-                    {proposal.respondedAt.toLocaleTimeString()}
+                  <p className="text-sm text-gray-400 mt-4">
+                    {proposal.respondedAt.toLocaleDateString()} at {proposal.respondedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 )}
               </motion.div>
             ) : (
               <div>
                 <motion.div
-                  animate={{ y: [0, -10, 0] }}
+                  animate={{ scale: [1, 1.05, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="text-6xl mb-4"
+                  className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6"
                 >
-                  ⏳
+                  <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                 </motion.div>
-                <h3 className="font-display text-2xl font-bold text-blue-600 mb-2">
-                  Waiting for response...
+                <h3 className="font-display text-2xl font-bold text-blue-600 mb-3">
+                  Waiting for response
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 mb-2">
                   {proposal.recipientName} hasn&apos;t responded yet.
-                  <br />
-                  We&apos;ll email you when they do!
                 </p>
-                <p className="text-sm text-gray-400 mt-4">
-                  This page auto-refreshes every 30 seconds
+                <p className="text-sm text-gray-400">
+                  This page updates automatically
                 </p>
               </div>
             )}
           </div>
 
           {/* Time Remaining */}
-          <div className="text-center pt-4 border-t border-gray-100">
+          <div className="text-center pt-6 border-t border-gray-100">
             <p className="text-sm text-gray-400">
-              ⏰ {timeRemaining}
+              {timeRemaining}
             </p>
           </div>
         </motion.div>
 
-        {/* Share Link Again */}
+        {/* Share Link */}
         {!proposal.response && (
-          <div className="bg-white rounded-2xl p-4 shadow-lg mb-6">
-            <p className="text-sm text-gray-500 mb-2">📤 Share link (send to {proposal.recipientName}):</p>
+          <div className="bg-white rounded-2xl p-5 shadow-lg mb-6">
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Share link (send to {proposal.recipientName}):
+            </p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={`${typeof window !== 'undefined' ? window.location.origin : ''}/p/${id}`}
                 readOnly
-                className="flex-1 p-3 bg-gray-50 rounded-lg text-sm font-mono"
+                className="flex-1 p-3 bg-gray-50 rounded-xl text-sm font-mono text-gray-600"
               />
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/p/${id}`);
-                  alert('Link copied! 💕');
                 }}
-                className="p-3 bg-valentine-500 text-white rounded-lg hover:bg-valentine-600 transition"
+                className="px-4 py-3 bg-valentine-500 text-white rounded-xl font-medium hover:bg-valentine-600 transition"
               >
-                📋
+                Copy
               </button>
             </div>
           </div>
@@ -261,9 +249,9 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
         <div className="text-center">
           <Link
             href="/"
-            className="inline-block px-6 py-3 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition"
+            className="inline-block px-6 py-3 text-gray-500 hover:text-gray-700 font-medium transition"
           >
-            Create another proposal 💕
+            Create another proposal
           </Link>
         </div>
       </div>
