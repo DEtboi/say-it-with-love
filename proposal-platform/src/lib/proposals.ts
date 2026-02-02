@@ -1,0 +1,139 @@
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc,
+  serverTimestamp,
+  Timestamp 
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from './firebase';
+import { Proposal, ProposalType, CreateProposalForm } from '@/types/proposal';
+import { v4 as uuidv4 } from 'uuid';
+
+const PROPOSALS_COLLECTION = 'proposals';
+const EXPIRY_DAYS = 5;
+
+// Generate a short, shareable ID
+function generateShortId(): string {
+  return uuidv4().slice(0, 8);
+}
+
+// Calculate expiry date (5 days from creation)
+function getExpiryDate(): Date {
+  const expiry = new Date();
+  expiry.setDate(expiry.getDate() + EXPIRY_DAYS);
+  return expiry;
+}
+
+// Upload images to Firebase Storage
+async function uploadImages(proposalId: string, images: File[]): Promise<string[]> {
+  const urls: string[] = [];
+  
+  for (let i = 0; i < images.length; i++) {
+    const file = images[i];
+    const storageRef = ref(storage, `proposals/${proposalId}/${i}_${file.name}`);
+    
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    urls.push(url);
+  }
+  
+  return urls;
+}
+
+// Create a new proposal
+export async function createProposal(form: CreateProposalForm): Promise<string> {
+  const proposalId = generateShortId();
+  
+  // Upload images first
+  let imageUrls: string[] = [];
+  if (form.images && form.images.length > 0) {
+    imageUrls = await uploadImages(proposalId, form.images);
+  }
+  
+  const now = new Date();
+  const expiresAt = getExpiryDate();
+  
+  const proposalData = {
+    type: form.type,
+    proposerName: form.proposerName,
+    recipientName: form.recipientName,
+    message: form.message,
+    images: imageUrls,
+    template: form.template,
+    createdAt: Timestamp.fromDate(now),
+    expiresAt: Timestamp.fromDate(expiresAt),
+  };
+  
+  await setDoc(doc(db, PROPOSALS_COLLECTION, proposalId), proposalData);
+  
+  return proposalId;
+}
+
+// Get a proposal by ID
+export async function getProposal(proposalId: string): Promise<Proposal | null> {
+  const docRef = doc(db, PROPOSALS_COLLECTION, proposalId);
+  const docSnap = await getDoc(docRef);
+  
+  if (!docSnap.exists()) {
+    return null;
+  }
+  
+  const data = docSnap.data();
+  
+  // Convert Firestore Timestamps to Dates
+  const proposal: Proposal = {
+    id: proposalId,
+    type: data.type as ProposalType,
+    proposerName: data.proposerName,
+    recipientName: data.recipientName,
+    message: data.message,
+    images: data.images || [],
+    template: data.template,
+    createdAt: data.createdAt?.toDate() || new Date(),
+    expiresAt: data.expiresAt?.toDate() || new Date(),
+    response: data.response,
+    respondedAt: data.respondedAt?.toDate(),
+  };
+  
+  return proposal;
+}
+
+// Check if a proposal has expired
+export function isProposalExpired(proposal: Proposal): boolean {
+  return new Date() > proposal.expiresAt;
+}
+
+// Record the response to a proposal
+export async function recordResponse(
+  proposalId: string, 
+  response: 'yes' | 'no'
+): Promise<void> {
+  const docRef = doc(db, PROPOSALS_COLLECTION, proposalId);
+  
+  await updateDoc(docRef, {
+    response,
+    respondedAt: serverTimestamp(),
+  });
+}
+
+// Get remaining time until expiry
+export function getTimeRemaining(expiresAt: Date): string {
+  const now = new Date();
+  const diff = expiresAt.getTime() - now.getTime();
+  
+  if (diff <= 0) {
+    return 'Expired';
+  }
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  
+  if (days > 0) {
+    return `${days} day${days > 1 ? 's' : ''} remaining`;
+  }
+  
+  return `${hours} hour${hours > 1 ? 's' : ''} remaining`;
+}
