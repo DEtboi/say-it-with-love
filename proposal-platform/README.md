@@ -12,7 +12,7 @@ A free, lightweight, emotionally engaging proposal platform that allows anyone t
 - **Beautiful Animations**: Floating hearts, confetti, smooth transitions
 - **Mobile-First Design**: Optimized for WhatsApp & Instagram sharing
 - **No Login Required**: Create and share in under a minute
-- **100% Free**: Hosted on free-tier infrastructure
+- **100% Free**: Hosted on free-tier infrastructure (no payment required)
 - **Privacy-Respecting**: Auto-deletes after 5 days
 
 ## 🚀 Quick Start
@@ -27,8 +27,8 @@ A free, lightweight, emotionally engaging proposal platform that allows anyone t
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/proposal-platform.git
-   cd proposal-platform
+   git clone https://github.com/yourusername/say-it-with-love.git
+   cd say-it-with-love
    ```
 
 2. **Install dependencies**
@@ -39,8 +39,7 @@ A free, lightweight, emotionally engaging proposal platform that allows anyone t
 3. **Set up Firebase**
    - Go to [Firebase Console](https://console.firebase.google.com/)
    - Create a new project
-   - Enable Firestore Database
-   - Enable Storage
+   - Enable Firestore Database (production mode)
    - Get your config from Project Settings > Your Apps
 
 4. **Configure environment variables**
@@ -128,20 +127,6 @@ service cloud.firestore {
 }
 ```
 
-**Storage Rules** (`storage.rules`):
-```javascript
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /proposals/{proposalId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.resource.size < 2 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
-    }
-  }
-}
-```
-
 ## 🧹 Cleanup Function
 
 Set up a Cloud Function to auto-delete expired proposals:
@@ -156,7 +141,6 @@ exports.cleanupExpiredProposals = functions.pubsub
   .schedule('every 24 hours')
   .onRun(async (context) => {
     const db = admin.firestore();
-    const storage = admin.storage().bucket();
     const now = admin.firestore.Timestamp.now();
     
     const expired = await db.collection('proposals')
@@ -166,19 +150,12 @@ exports.cleanupExpiredProposals = functions.pubsub
     const batch = db.batch();
     
     for (const doc of expired.docs) {
-      // Delete images
-      const proposal = doc.data();
-      for (const imageUrl of proposal.images || []) {
-        try {
-          const path = imageUrl.split('/o/')[1].split('?')[0];
-          await storage.file(decodeURIComponent(path)).delete();
-        } catch (e) {}
-      }
       batch.delete(doc.ref);
     }
     
     await batch.commit();
     console.log(`Deleted ${expired.size} expired proposals`);
+    return null;
   });
 ```
 

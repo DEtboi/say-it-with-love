@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { PROPOSAL_CONFIGS, TEMPLATES, ProposalType, TemplateId } from '@/types/proposal';
+import { createProposal } from '@/lib/proposals';
 
 // Component that uses useSearchParams
 function CreateFormContent() {
@@ -21,60 +22,31 @@ function CreateFormContent() {
     recipientName: '',
     message: '',
     template: 'romantic' as TemplateId,
-    images: [] as File[],
   });
-  const [imagePreview, setImagePreview] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
-
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const newFiles = Array.from(files).slice(0, 5 - formData.images.length);
-    const validFiles = newFiles.filter(file => {
-      if (file.size > 2 * 1024 * 1024) {
-        alert(`${file.name} is too large. Max size is 2MB.`);
-        return false;
-      }
-      return true;
-    });
-
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ...validFiles],
-    }));
-
-    // Create previews
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-  }, [formData.images.length]);
-
-  const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-    setImagePreview(prev => prev.filter((_, i) => i !== index));
-  };
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setError(null);
     
-    // For demo purposes, generate a mock link
-    // In production, this would call createProposal from the proposals service
-    const mockId = Math.random().toString(36).substring(2, 10);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setGeneratedLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/p/${mockId}`);
-    setIsSubmitting(false);
+    try {
+      const proposalId = await createProposal({
+        type: proposalType,
+        proposerName: formData.proposerName,
+        recipientName: formData.recipientName,
+        message: formData.message,
+        template: formData.template,
+      });
+      
+      setGeneratedLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/p/${proposalId}`);
+    } catch (err) {
+      console.error('Error creating proposal:', err);
+      setError('Failed to create proposal. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const copyLink = () => {
@@ -90,8 +62,6 @@ function CreateFormContent() {
         return formData.proposerName.trim() && formData.recipientName.trim();
       case 2:
         return formData.message.trim();
-      case 3:
-        return true;
       default:
         return false;
     }
@@ -141,7 +111,7 @@ function CreateFormContent() {
             Share on WhatsApp 💬
           </a>
           <Link
-            href={generatedLink}
+            href={generatedLink.replace(typeof window !== 'undefined' ? window.location.origin : '', '')}
             className="px-6 py-3 bg-gray-100 text-gray-700 rounded-full font-semibold hover:bg-gray-200 transition"
           >
             Preview Proposal 👀
@@ -171,7 +141,7 @@ function CreateFormContent() {
 
       {/* Progress Steps */}
       <div className="flex justify-center gap-2 mb-8">
-        {[1, 2, 3].map((s) => (
+        {[1, 2].map((s) => (
           <div
             key={s}
             className={`w-3 h-3 rounded-full transition-all ${
@@ -180,6 +150,13 @@ function CreateFormContent() {
           />
         ))}
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-center">
+          {error}
+        </div>
+      )}
 
       {/* Form Steps */}
       <AnimatePresence mode="wait">
@@ -245,70 +222,9 @@ function CreateFormContent() {
               className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-300 focus:border-valentine-300 outline-none transition resize-none"
             />
 
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm text-gray-400 mt-2 mb-6">
               Tip: Be genuine and speak from the heart 💗
             </p>
-          </motion.div>
-        )}
-
-        {step === 3 && (
-          <motion.div
-            key="step3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
-          >
-            <h2 className="font-display text-xl font-semibold mb-6">
-              Add some photos (optional) 📸
-            </h2>
-
-            {/* Image Upload */}
-            <div className="mb-6">
-              <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-valentine-300 transition cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="image-upload"
-                  disabled={formData.images.length >= 5}
-                />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <div className="text-4xl mb-2">📷</div>
-                  <p className="text-gray-600">
-                    {formData.images.length >= 5 
-                      ? 'Maximum 5 images reached' 
-                      : 'Click to upload photos'}
-                  </p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Max 2MB per image • Up to 5 images
-                  </p>
-                </label>
-              </div>
-
-              {/* Image Previews */}
-              {imagePreview.length > 0 && (
-                <div className="flex flex-wrap gap-3 mt-4">
-                  {imagePreview.map((src, i) => (
-                    <div key={i} className="relative group">
-                      <img
-                        src={src}
-                        alt={`Upload ${i + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => removeImage(i)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-sm opacity-0 group-hover:opacity-100 transition"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Template Selection */}
             <h3 className="font-medium text-gray-700 mb-3">Choose a style</h3>
@@ -346,7 +262,7 @@ function CreateFormContent() {
           ← Back
         </button>
 
-        {step < 3 ? (
+        {step < 2 ? (
           <button
             onClick={() => setStep(prev => prev + 1)}
             disabled={!isStepValid(step)}
@@ -361,8 +277,12 @@ function CreateFormContent() {
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-8 py-3 bg-gradient-to-r from-valentine-500 to-pink-500 text-white rounded-full font-semibold hover:shadow-lg transition flex items-center gap-2"
+            disabled={isSubmitting || !isStepValid(step)}
+            className={`px-8 py-3 rounded-full font-semibold transition flex items-center gap-2 ${
+              isSubmitting || !isStepValid(step)
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-valentine-500 to-pink-500 text-white hover:shadow-lg'
+            }`}
           >
             {isSubmitting ? (
               <>
@@ -380,7 +300,7 @@ function CreateFormContent() {
 
       {/* Disclaimer */}
       <p className="text-center text-sm text-gray-400 mt-8">
-        ⏰ Your proposal and images will be automatically deleted after 5 days
+        ⏰ Your proposal will be automatically deleted after 5 days
         <br />
         to keep the platform free for everyone.
       </p>

@@ -25,7 +25,6 @@ export interface Proposal {
   proposerName: string;
   recipientName: string;
   message: string;
-  images: string[];
   template: string;
   createdAt: Date;
   expiresAt: Date;
@@ -38,7 +37,6 @@ export interface CreateProposalForm {
   proposerName: string;
   recipientName: string;
   message: string;
-  images: File[];
   template: string;
 }
 

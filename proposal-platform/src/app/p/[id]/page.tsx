@@ -1,21 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PROPOSAL_CONFIGS, ProposalType } from '@/types/proposal';
-
-// Mock data for demo - in production, this would come from Firebase
-const MOCK_PROPOSAL = {
-  id: 'demo123',
-  type: 'valentine' as ProposalType,
-  proposerName: 'Alex',
-  recipientName: 'Jamie',
-  message: "From the moment I met you, I knew there was something special about you. Your smile lights up my world, and your laugh is my favorite sound. Every day with you feels like an adventure, and I can't imagine my life without you in it.\n\nYou make me want to be a better person, and I'm so grateful for every moment we spend together. So here I am, asking you the most important question...",
-  images: [],
-  template: 'romantic',
-  createdAt: new Date(),
-  expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-};
+import { PROPOSAL_CONFIGS, ProposalType, Proposal } from '@/types/proposal';
+import { getProposal, isProposalExpired, recordResponse } from '@/lib/proposals';
 
 // Confetti component
 const Confetti = () => {
@@ -44,6 +32,7 @@ const Confetti = () => {
             ease: 'easeOut',
           }}
           style={{
+            position: 'fixed',
             left: `${Math.random() * 100}%`,
             width: `${8 + Math.random() * 8}px`,
             height: `${8 + Math.random() * 8}px`,
@@ -58,7 +47,6 @@ const Confetti = () => {
 
 // Floating Hearts Background
 const FloatingHeartsBackground = ({ type }: { type: ProposalType }) => {
-  const hearts = ['💕', '💖', '💗', '💘', '💝', '❤️', '🩷'];
   const emojis: Record<ProposalType, string[]> = {
     valentine: ['💕', '💘', '❤️', '🩷', '💝'],
     marriage: ['💍', '💒', '💑', '✨', '🤍'],
@@ -173,13 +161,124 @@ const PlayfulNoButton = ({
   );
 };
 
+// Loading Screen
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50">
+    <motion.div
+      animate={{ scale: [1, 1.2, 1] }}
+      transition={{ duration: 1.5, repeat: Infinity }}
+      className="text-6xl"
+    >
+      💕
+    </motion.div>
+  </div>
+);
+
+// Error/Expired Screen
+const ExpiredScreen = () => (
+  <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="text-center">
+      <div className="text-6xl mb-6">💔</div>
+      <h1 className="font-display text-3xl font-bold text-gray-800 mb-4">
+        This proposal has expired
+      </h1>
+      <p className="text-gray-600 mb-8">
+        Proposals are available for 5 days to keep the platform free.
+      </p>
+      <a
+        href="/"
+        className="inline-block px-6 py-3 bg-valentine-500 text-white rounded-full font-semibold hover:bg-valentine-600 transition"
+      >
+        Create a new proposal 💕
+      </a>
+    </div>
+  </main>
+);
+
+// Not Found Screen
+const NotFoundScreen = () => (
+  <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="text-center">
+      <div className="text-6xl mb-6">🔍</div>
+      <h1 className="font-display text-3xl font-bold text-gray-800 mb-4">
+        Proposal not found
+      </h1>
+      <p className="text-gray-600 mb-8">
+        This proposal doesn&apos;t exist or may have been deleted.
+      </p>
+      <a
+        href="/"
+        className="inline-block px-6 py-3 bg-valentine-500 text-white rounded-full font-semibold hover:bg-valentine-600 transition"
+      >
+        Create a new proposal 💕
+      </a>
+    </div>
+  </main>
+);
+
 export default function ProposalPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [response, setResponse] = useState<'yes' | 'no' | null>(null);
   const [showConfirmNo, setShowConfirmNo] = useState(false);
-  
-  // In production, fetch proposal data based on params.id
-  const proposal = MOCK_PROPOSAL;
+
+  // Fetch proposal data
+  useEffect(() => {
+    async function fetchProposal() {
+      try {
+        const data = await getProposal(id);
+        if (data) {
+          setProposal(data);
+          // If already responded, set the response
+          if (data.response) {
+            setResponse(data.response);
+            setRevealed(true);
+          }
+        } else {
+          setError(true);
+        }
+      } catch (err) {
+        console.error('Error fetching proposal:', err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchProposal();
+  }, [id]);
+
+  // Handle response
+  const handleResponse = async (resp: 'yes' | 'no') => {
+    try {
+      await recordResponse(id, resp);
+      setResponse(resp);
+    } catch (err) {
+      console.error('Error recording response:', err);
+      // Still show the response locally even if save fails
+      setResponse(resp);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  // Error state
+  if (error || !proposal) {
+    return <NotFoundScreen />;
+  }
+
+  // Check if expired
+  if (isProposalExpired(proposal)) {
+    return <ExpiredScreen />;
+  }
+
   const config = PROPOSAL_CONFIGS[proposal.type];
   
   // Background color classes based on type
@@ -189,31 +288,6 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
     girlfriend: 'from-girlfriend-50 via-fuchsia-50 to-purple-50',
     boyfriend: 'from-boyfriend-50 via-teal-50 to-cyan-50',
   };
-
-  // Check if expired
-  const isExpired = new Date() > proposal.expiresAt;
-
-  if (isExpired) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="text-center">
-          <div className="text-6xl mb-6">💔</div>
-          <h1 className="font-display text-3xl font-bold text-gray-800 mb-4">
-            This proposal has expired
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Proposals are available for 5 days to keep the platform free.
-          </p>
-          <a
-            href="/"
-            className="inline-block px-6 py-3 bg-valentine-500 text-white rounded-full font-semibold hover:bg-valentine-600 transition"
-          >
-            Create a new proposal 💕
-          </a>
-        </div>
-      </main>
-    );
-  }
 
   // Response given - show success or gentle decline
   if (response) {
@@ -352,7 +426,7 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => setResponse('yes')}
+                      onClick={() => handleResponse('yes')}
                       className={`
                         btn-shine px-8 py-4 rounded-full font-semibold text-lg text-white shadow-lg
                         bg-gradient-to-r ${config.theme.gradient}
@@ -386,7 +460,7 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
                         Wait, go back!
                       </button>
                       <button
-                        onClick={() => setResponse('no')}
+                        onClick={() => handleResponse('no')}
                         className="px-6 py-2 bg-gray-200 text-gray-600 rounded-full font-medium"
                       >
                         Yes, I&apos;m sure

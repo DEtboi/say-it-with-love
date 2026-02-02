@@ -7,8 +7,7 @@ import {
   serverTimestamp,
   Timestamp 
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db } from './firebase';
 import { Proposal, ProposalType, CreateProposalForm } from '@/types/proposal';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -27,31 +26,9 @@ function getExpiryDate(): Date {
   return expiry;
 }
 
-// Upload images to Firebase Storage
-async function uploadImages(proposalId: string, images: File[]): Promise<string[]> {
-  const urls: string[] = [];
-  
-  for (let i = 0; i < images.length; i++) {
-    const file = images[i];
-    const storageRef = ref(storage, `proposals/${proposalId}/${i}_${file.name}`);
-    
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    urls.push(url);
-  }
-  
-  return urls;
-}
-
 // Create a new proposal
 export async function createProposal(form: CreateProposalForm): Promise<string> {
   const proposalId = generateShortId();
-  
-  // Upload images first
-  let imageUrls: string[] = [];
-  if (form.images && form.images.length > 0) {
-    imageUrls = await uploadImages(proposalId, form.images);
-  }
   
   const now = new Date();
   const expiresAt = getExpiryDate();
@@ -61,7 +38,6 @@ export async function createProposal(form: CreateProposalForm): Promise<string> 
     proposerName: form.proposerName,
     recipientName: form.recipientName,
     message: form.message,
-    images: imageUrls,
     template: form.template,
     createdAt: Timestamp.fromDate(now),
     expiresAt: Timestamp.fromDate(expiresAt),
@@ -90,7 +66,6 @@ export async function getProposal(proposalId: string): Promise<Proposal | null> 
     proposerName: data.proposerName,
     recipientName: data.recipientName,
     message: data.message,
-    images: data.images || [],
     template: data.template,
     createdAt: data.createdAt?.toDate() || new Date(),
     expiresAt: data.expiresAt?.toDate() || new Date(),
