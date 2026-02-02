@@ -36,6 +36,7 @@ export async function createProposal(form: CreateProposalForm): Promise<string> 
   const proposalData = {
     type: form.type,
     proposerName: form.proposerName,
+    proposerEmail: form.proposerEmail,
     recipientName: form.recipientName,
     message: form.message,
     template: form.template,
@@ -64,6 +65,7 @@ export async function getProposal(proposalId: string): Promise<Proposal | null> 
     id: proposalId,
     type: data.type as ProposalType,
     proposerName: data.proposerName,
+    proposerEmail: data.proposerEmail || '',
     recipientName: data.recipientName,
     message: data.message,
     template: data.template,

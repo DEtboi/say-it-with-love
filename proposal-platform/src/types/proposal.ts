@@ -23,6 +23,7 @@ export interface Proposal {
   id: string;
   type: ProposalType;
   proposerName: string;
+  proposerEmail: string;
   recipientName: string;
   message: string;
   template: string;
@@ -35,6 +36,7 @@ export interface Proposal {
 export interface CreateProposalForm {
   type: ProposalType;
   proposerName: string;
+  proposerEmail: string;
   recipientName: string;
   message: string;
   template: string;

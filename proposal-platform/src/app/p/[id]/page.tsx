@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PROPOSAL_CONFIGS, ProposalType, Proposal } from '@/types/proposal';
 import { getProposal, isProposalExpired, recordResponse } from '@/lib/proposals';
+import { sendResponseNotification } from '@/lib/email';
 
 // Confetti component
 const Confetti = () => {
@@ -257,6 +258,19 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
     try {
       await recordResponse(id, resp);
       setResponse(resp);
+      
+      // Send email notification to proposer
+      if (proposal && proposal.proposerEmail) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        await sendResponseNotification({
+          to_email: proposal.proposerEmail,
+          proposer_name: proposal.proposerName,
+          recipient_name: proposal.recipientName,
+          proposal_type: PROPOSAL_CONFIGS[proposal.type].headline,
+          response: resp,
+          status_link: `${origin}/status/${id}`,
+        });
+      }
     } catch (err) {
       console.error('Error recording response:', err);
       // Still show the response locally even if save fails

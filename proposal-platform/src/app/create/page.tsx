@@ -19,12 +19,14 @@ function CreateFormContent() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     proposerName: '',
+    proposerEmail: '',
     recipientName: '',
     message: '',
     template: 'romantic' as TemplateId,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [statusLink, setStatusLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -35,12 +37,15 @@ function CreateFormContent() {
       const proposalId = await createProposal({
         type: proposalType,
         proposerName: formData.proposerName,
+        proposerEmail: formData.proposerEmail,
         recipientName: formData.recipientName,
         message: formData.message,
         template: formData.template,
       });
       
-      setGeneratedLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/p/${proposalId}`);
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      setGeneratedLink(`${origin}/p/${proposalId}`);
+      setStatusLink(`${origin}/status/${proposalId}`);
     } catch (err) {
       console.error('Error creating proposal:', err);
       setError('Failed to create proposal. Please try again.');
@@ -49,17 +54,22 @@ function CreateFormContent() {
     }
   };
 
-  const copyLink = () => {
-    if (generatedLink) {
-      navigator.clipboard.writeText(generatedLink);
-      alert('Link copied to clipboard! 💕');
-    }
+  const copyLink = (link: string) => {
+    navigator.clipboard.writeText(link);
+    alert('Link copied to clipboard! 💕');
+  };
+
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const isStepValid = (s: number) => {
     switch (s) {
       case 1:
-        return formData.proposerName.trim() && formData.recipientName.trim();
+        return formData.proposerName.trim() && 
+               formData.proposerEmail.trim() && 
+               isValidEmail(formData.proposerEmail) &&
+               formData.recipientName.trim();
       case 2:
         return formData.message.trim();
       default:
@@ -67,8 +77,8 @@ function CreateFormContent() {
     }
   };
 
-  // Success state - show generated link
-  if (generatedLink) {
+  // Success state - show generated link and status link
+  if (generatedLink && statusLink) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -80,11 +90,12 @@ function CreateFormContent() {
           Your proposal is ready!
         </h2>
         <p className="text-gray-600 mb-8">
-          Share this link with {formData.recipientName} and wait for the magic ✨
+          Share the proposal link with {formData.recipientName} and wait for the magic ✨
         </p>
 
-        <div className="bg-white rounded-xl p-4 shadow-md mb-6">
-          <p className="text-sm text-gray-500 mb-2">Your unique link:</p>
+        {/* Proposal Link */}
+        <div className="bg-white rounded-xl p-4 shadow-md mb-4">
+          <p className="text-sm text-gray-500 mb-2">📤 Share this link with {formData.recipientName}:</p>
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -93,12 +104,34 @@ function CreateFormContent() {
               className="flex-1 p-3 bg-gray-50 rounded-lg text-sm font-mono"
             />
             <button
-              onClick={copyLink}
+              onClick={() => copyLink(generatedLink)}
               className="p-3 bg-valentine-500 text-white rounded-lg hover:bg-valentine-600 transition"
             >
               📋
             </button>
           </div>
+        </div>
+
+        {/* Status Link */}
+        <div className="bg-blue-50 rounded-xl p-4 shadow-md mb-6">
+          <p className="text-sm text-blue-600 mb-2">🔒 Your private status page (don&apos;t share!):</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={statusLink}
+              readOnly
+              className="flex-1 p-3 bg-white rounded-lg text-sm font-mono"
+            />
+            <button
+              onClick={() => copyLink(statusLink)}
+              className="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+            >
+              📋
+            </button>
+          </div>
+          <p className="text-xs text-blue-500 mt-2">
+            You&apos;ll also receive an email when {formData.recipientName} responds!
+          </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -184,6 +217,22 @@ function CreateFormContent() {
                   onChange={(e) => setFormData(prev => ({ ...prev, proposerName: e.target.value }))}
                   className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-300 focus:border-valentine-300 outline-none transition"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your email <span className="text-gray-400">(for notifications)</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={formData.proposerEmail}
+                  onChange={(e) => setFormData(prev => ({ ...prev, proposerEmail: e.target.value }))}
+                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-valentine-300 focus:border-valentine-300 outline-none transition"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  We&apos;ll notify you when they respond 📧
+                </p>
               </div>
 
               <div>
