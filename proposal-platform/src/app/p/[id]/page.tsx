@@ -248,6 +248,7 @@ const GuessingGame = ({
 }) => {
   const [guess, setGuess] = useState('');
   const [guessesUsed, setGuessesUsed] = useState(proposal.guessesUsed || 0);
+  const [guesses, setGuesses] = useState<string[]>(proposal.guesses || []);
   const [lastGuessWrong, setLastGuessWrong] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCorrect, setShowCorrect] = useState(false);
@@ -261,8 +262,9 @@ const GuessingGame = ({
     setLastGuessWrong(false);
     
     try {
-      const result = await recordGuess(proposal.id, guess, proposal.proposerName, guessesUsed);
+      const result = await recordGuess(proposal.id, guess, proposal.proposerName, guessesUsed, guesses);
       setGuessesUsed(result.guessesUsed);
+      setGuesses(result.guesses);
       
       if (result.correct) {
         setShowCorrect(true);
@@ -278,12 +280,14 @@ const GuessingGame = ({
       // Still check locally
       if (checkGuess(guess, proposal.proposerName)) {
         setShowCorrect(true);
+        setGuesses(prev => [...prev, guess.trim()]);
         setTimeout(() => {
           onCorrectGuess();
         }, 2000);
       } else {
         setLastGuessWrong(true);
         setGuessesUsed(prev => prev + 1);
+        setGuesses(prev => [...prev, guess.trim()]);
         setGuess('');
       }
     } finally {

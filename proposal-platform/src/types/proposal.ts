@@ -29,6 +29,7 @@ export interface Proposal {
   template: string;
   isAnonymous: boolean;
   guessesUsed?: number;
+  guesses?: string[];
   guessedCorrectly?: boolean;
   createdAt: Date;
   expiresAt: Date;

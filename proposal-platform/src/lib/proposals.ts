@@ -5,7 +5,8 @@ import {
   getDoc, 
   updateDoc,
   serverTimestamp,
-  Timestamp 
+  Timestamp,
+  arrayUnion 
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Proposal, ProposalType, CreateProposalForm } from '@/types/proposal';
@@ -41,6 +42,9 @@ export async function createProposal(form: CreateProposalForm): Promise<string> 
     message: form.message,
     template: form.template,
     isAnonymous: form.isAnonymous || false,
+    guessesUsed: 0,
+    guesses: [],
+    guessedCorrectly: false,
     createdAt: Timestamp.fromDate(now),
     expiresAt: Timestamp.fromDate(expiresAt),
   };
@@ -72,6 +76,7 @@ export async function getProposal(proposalId: string): Promise<Proposal | null> 
     template: data.template,
     isAnonymous: data.isAnonymous || false,
     guessesUsed: data.guessesUsed || 0,
+    guesses: data.guesses || [],
     guessedCorrectly: data.guessedCorrectly || false,
     createdAt: data.createdAt?.toDate() || new Date(),
     expiresAt: data.expiresAt?.toDate() || new Date(),
@@ -105,24 +110,30 @@ export async function recordGuess(
   proposalId: string, 
   guess: string, 
   proposerName: string,
-  currentGuesses: number
-): Promise<{ correct: boolean; guessesUsed: number }> {
+  currentGuesses: number,
+  existingGuesses: string[] = []
+): Promise<{ correct: boolean; guessesUsed: number; guesses: string[] }> {
   const docRef = doc(db, PROPOSALS_COLLECTION, proposalId);
   const isCorrect = checkGuess(guess, proposerName);
   const newGuessCount = currentGuesses + 1;
+  const trimmedGuess = guess.trim();
+  const updatedGuesses = [...existingGuesses, trimmedGuess];
   
+  // Use arrayUnion for reliable array updates
   if (isCorrect) {
     await updateDoc(docRef, {
       guessesUsed: newGuessCount,
+      guesses: arrayUnion(trimmedGuess),
       guessedCorrectly: true,
     });
   } else {
     await updateDoc(docRef, {
       guessesUsed: newGuessCount,
+      guesses: arrayUnion(trimmedGuess),
     });
   }
   
-  return { correct: isCorrect, guessesUsed: newGuessCount };
+  return { correct: isCorrect, guessesUsed: newGuessCount, guesses: updatedGuesses };
 }
 
 // Check if a guess matches the proposer's first name (case insensitive)

@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { PROPOSAL_CONFIGS, ProposalType, Proposal } from '@/types/proposal';
-import { getProposal, isProposalExpired, getTimeRemaining } from '@/lib/proposals';
+import { getProposal, isProposalExpired, getTimeRemaining, checkGuess } from '@/lib/proposals';
 
 // Premium background
 const StatusBackground = () => (
@@ -195,23 +195,75 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
             </div>
           </div>
 
-          {/* Anonymous guess status */}
-          {proposal.isAnonymous && !proposal.response && (
-            <div className="mb-6 p-4 bg-purple-50 rounded-2xl border border-purple-100">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🎭</span>
+          {/* Anonymous guess status - ALWAYS show for anonymous proposals */}
+          {proposal.isAnonymous && (
+            <div className="mb-6 p-5 bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-2xl border border-purple-200 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">🎭</span>
+                </div>
                 <div>
-                  <p className="font-medium text-purple-900">Anonymous Mode</p>
+                  <p className="font-bold text-purple-900">Anonymous Mode</p>
                   {proposal.guessedCorrectly ? (
-                    <p className="text-sm text-purple-600">{proposal.recipientName} guessed it was you!</p>
-                  ) : proposal.guessesUsed && proposal.guessesUsed >= 3 ? (
-                    <p className="text-sm text-purple-600">{proposal.recipientName} used all 3 guesses and found out it was you</p>
-                  ) : proposal.guessesUsed ? (
-                    <p className="text-sm text-purple-600">{proposal.recipientName} has used {proposal.guessesUsed} of 3 guesses</p>
+                    <p className="text-sm text-green-600 font-medium">
+                      {proposal.recipientName} guessed correctly!
+                    </p>
+                  ) : (proposal.guessesUsed ?? 0) >= 3 ? (
+                    <p className="text-sm text-purple-600">
+                      {proposal.recipientName} used all 3 guesses - your identity was revealed
+                    </p>
+                  ) : (proposal.guessesUsed ?? 0) > 0 ? (
+                    <p className="text-sm text-purple-600">
+                      {proposal.recipientName} has used {proposal.guessesUsed} of 3 guesses
+                    </p>
                   ) : (
-                    <p className="text-sm text-purple-600">{proposal.recipientName} hasn&apos;t tried guessing yet</p>
+                    <p className="text-sm text-purple-600">
+                      {proposal.recipientName} hasn&apos;t tried guessing yet
+                    </p>
                   )}
                 </div>
+              </div>
+              
+              {/* Display all guesses - show section even if empty for clarity */}
+              <div className="pt-4 border-t border-purple-200">
+                <p className="text-xs font-bold text-purple-800 uppercase tracking-wide mb-3">
+                  Names they guessed:
+                </p>
+                {proposal.guesses && proposal.guesses.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {proposal.guesses.map((g, i) => {
+                      const isCorrect = checkGuess(g, proposal.proposerName);
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.1 }}
+                          className={`
+                            px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm
+                            ${isCorrect 
+                              ? 'bg-green-100 text-green-800 border-2 border-green-300' 
+                              : 'bg-white text-purple-800 border-2 border-purple-200'
+                            }
+                          `}
+                        >
+                          <span className="text-base">{g}</span>
+                          {isCorrect ? (
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-purple-400 italic">No guesses yet</p>
+                )}
               </div>
             </div>
           )}
