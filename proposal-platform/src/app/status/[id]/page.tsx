@@ -180,13 +180,41 @@ export default function StatusPage({ params }: { params: Promise<{ id: string }>
           {/* Proposal info header */}
           <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-100">
             <div className={`w-14 h-14 bg-gradient-to-br ${gradients[proposal.type]} rounded-2xl flex items-center justify-center text-2xl shadow-lg`}>
-              {config.emoji}
+              {proposal.isAnonymous ? '🎭' : config.emoji}
             </div>
-            <div>
-              <h2 className="font-bold text-gray-900">{config.headline}</h2>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="font-bold text-gray-900">{config.headline}</h2>
+                {proposal.isAnonymous && (
+                  <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-xs font-semibold rounded-full">
+                    Anonymous
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500">From {proposal.proposerName} to {proposal.recipientName}</p>
             </div>
           </div>
+
+          {/* Anonymous guess status */}
+          {proposal.isAnonymous && !proposal.response && (
+            <div className="mb-6 p-4 bg-purple-50 rounded-2xl border border-purple-100">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🎭</span>
+                <div>
+                  <p className="font-medium text-purple-900">Anonymous Mode</p>
+                  {proposal.guessedCorrectly ? (
+                    <p className="text-sm text-purple-600">{proposal.recipientName} guessed it was you!</p>
+                  ) : proposal.guessesUsed && proposal.guessesUsed >= 3 ? (
+                    <p className="text-sm text-purple-600">{proposal.recipientName} used all 3 guesses and found out it was you</p>
+                  ) : proposal.guessesUsed ? (
+                    <p className="text-sm text-purple-600">{proposal.recipientName} has used {proposal.guessesUsed} of 3 guesses</p>
+                  ) : (
+                    <p className="text-sm text-purple-600">{proposal.recipientName} hasn&apos;t tried guessing yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Status display */}
           <div className="text-center py-8">

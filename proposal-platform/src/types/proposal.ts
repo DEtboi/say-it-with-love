@@ -23,10 +23,13 @@ export interface Proposal {
   id: string;
   type: ProposalType;
   proposerName: string;
-  proposerEmail?: string; // Optional - not used anymore
+  proposerEmail?: string;
   recipientName: string;
   message: string;
   template: string;
+  isAnonymous: boolean;
+  guessesUsed?: number;
+  guessedCorrectly?: boolean;
   createdAt: Date;
   expiresAt: Date;
   response?: 'yes' | 'no';
@@ -36,10 +39,11 @@ export interface Proposal {
 export interface CreateProposalForm {
   type: ProposalType;
   proposerName: string;
-  proposerEmail?: string; // Optional - not used anymore
+  proposerEmail?: string;
   recipientName: string;
   message: string;
   template: string;
+  isAnonymous: boolean;
 }
 
 export const PROPOSAL_CONFIGS: Record<ProposalType, ProposalConfig> = {

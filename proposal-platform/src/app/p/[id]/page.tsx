@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PROPOSAL_CONFIGS, ProposalType, Proposal } from '@/types/proposal';
-import { getProposal, isProposalExpired, recordResponse } from '@/lib/proposals';
+import { getProposal, isProposalExpired, recordResponse, recordGuess, checkGuess } from '@/lib/proposals';
 
 // Stunning confetti explosion
 const Confetti = () => {
@@ -46,6 +46,45 @@ const Confetti = () => {
   );
 };
 
+// Mini confetti for correct guess
+const MiniConfetti = () => {
+  const colors = ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#fbbf24', '#f59e0b'];
+  
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {[...Array(60)].map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ 
+            y: '40vh',
+            x: '50vw',
+            scale: 0,
+            opacity: 1,
+          }}
+          animate={{ 
+            y: Math.random() > 0.5 ? '-50vh' : '100vh',
+            x: `${Math.random() * 100}vw`,
+            scale: [0, 1, 0.5],
+            opacity: [1, 1, 0],
+          }}
+          transition={{
+            duration: 2 + Math.random() * 1.5,
+            delay: Math.random() * 0.3,
+            ease: 'easeOut',
+          }}
+          style={{
+            position: 'fixed',
+            width: `${5 + Math.random() * 8}px`,
+            height: `${5 + Math.random() * 8}px`,
+            backgroundColor: colors[Math.floor(Math.random() * colors.length)],
+            borderRadius: '50%',
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 // Animated romantic background
 const RomanticBackground = ({ type }: { type: ProposalType }) => {
   const gradients: Record<ProposalType, string[]> = {
@@ -66,7 +105,6 @@ const RomanticBackground = ({ type }: { type: ProposalType }) => {
     <div className="fixed inset-0 overflow-hidden">
       <div className="absolute inset-0" style={{ backgroundColor: bgBase[type] }} />
       
-      {/* Animated orbs */}
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
@@ -87,7 +125,6 @@ const RomanticBackground = ({ type }: { type: ProposalType }) => {
         />
       ))}
       
-      {/* Floating particles */}
       {[...Array(20)].map((_, i) => (
         <motion.div
           key={i}
@@ -118,59 +155,56 @@ const SuccessScreen = ({ config, proposerName, type }: {
   config: typeof PROPOSAL_CONFIGS[ProposalType]; 
   proposerName: string;
   type: ProposalType;
-}) => {
-  return (
+}) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ type: 'spring', stiffness: 100 }}
+    className="text-center px-4"
+  >
+    <Confetti />
+    
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 100 }}
-      className="text-center px-4"
+      animate={{ 
+        scale: [1, 1.2, 1],
+        rotate: [0, 5, -5, 0],
+      }}
+      transition={{ duration: 2, repeat: Infinity }}
+      className="text-8xl mb-8"
     >
-      <Confetti />
-      
-      {/* Animated heart/ring */}
-      <motion.div
-        animate={{ 
-          scale: [1, 1.2, 1],
-          rotate: [0, 5, -5, 0],
-        }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="text-8xl mb-8"
-      >
-        {type === 'marriage' ? '💍' : '❤️'}
-      </motion.div>
-      
-      <motion.h1 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="font-display text-5xl md:text-6xl font-bold text-gray-900 mb-4"
-      >
-        {config.successTitle}
-      </motion.h1>
-      
-      <motion.p 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="text-xl text-gray-600 mb-10 max-w-md mx-auto"
-      >
-        {config.successMessage}
-      </motion.p>
-      
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-      >
-        <p className="text-gray-500 mb-2">
-          <span className="font-display text-3xl gradient-text font-bold">{proposerName}</span>
-        </p>
-        <p className="text-gray-400">is overjoyed right now</p>
-      </motion.div>
+      {type === 'marriage' ? '💍' : '❤️'}
     </motion.div>
-  );
-};
+    
+    <motion.h1 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="font-display text-5xl md:text-6xl font-bold text-gray-900 mb-4"
+    >
+      {config.successTitle}
+    </motion.h1>
+    
+    <motion.p 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.5 }}
+      className="text-xl text-gray-600 mb-10 max-w-md mx-auto"
+    >
+      {config.successMessage}
+    </motion.p>
+    
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.7 }}
+    >
+      <p className="text-gray-500 mb-2">
+        <span className="font-display text-3xl gradient-text font-bold">{proposerName}</span>
+      </p>
+      <p className="text-gray-400">is overjoyed right now</p>
+    </motion.div>
+  </motion.div>
+);
 
 // Playful escaping No button
 const PlayfulNoButton = ({ onClick, text, playful }: { onClick: () => void; text: string; playful: boolean }) => {
@@ -197,6 +231,204 @@ const PlayfulNoButton = ({ onClick, text, playful }: { onClick: () => void; text
     >
       {escapeCount >= 3 ? 'Okay fine...' : text}
     </motion.button>
+  );
+};
+
+// Guessing Game Component
+const GuessingGame = ({ 
+  proposal, 
+  onCorrectGuess, 
+  onGiveUp,
+  gradients 
+}: { 
+  proposal: Proposal; 
+  onCorrectGuess: () => void;
+  onGiveUp: () => void;
+  gradients: Record<ProposalType, string>;
+}) => {
+  const [guess, setGuess] = useState('');
+  const [guessesUsed, setGuessesUsed] = useState(proposal.guessesUsed || 0);
+  const [lastGuessWrong, setLastGuessWrong] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCorrect, setShowCorrect] = useState(false);
+  const maxGuesses = 3;
+  const guessesRemaining = maxGuesses - guessesUsed;
+
+  const handleGuess = async () => {
+    if (!guess.trim() || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    setLastGuessWrong(false);
+    
+    try {
+      const result = await recordGuess(proposal.id, guess, proposal.proposerName, guessesUsed);
+      setGuessesUsed(result.guessesUsed);
+      
+      if (result.correct) {
+        setShowCorrect(true);
+        setTimeout(() => {
+          onCorrectGuess();
+        }, 2000);
+      } else {
+        setLastGuessWrong(true);
+        setGuess('');
+      }
+    } catch (err) {
+      console.error('Error recording guess:', err);
+      // Still check locally
+      if (checkGuess(guess, proposal.proposerName)) {
+        setShowCorrect(true);
+        setTimeout(() => {
+          onCorrectGuess();
+        }, 2000);
+      } else {
+        setLastGuessWrong(true);
+        setGuessesUsed(prev => prev + 1);
+        setGuess('');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Correct guess celebration
+  if (showCorrect) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center"
+      >
+        <MiniConfetti />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 0.5 }}
+          className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl"
+        >
+          <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        </motion.div>
+        <h3 className="font-display text-3xl font-bold text-green-600 mb-2">You got it!</h3>
+        <p className="text-gray-600">It&apos;s from <span className="font-bold">{proposal.proposerName}</span></p>
+      </motion.div>
+    );
+  }
+
+  // Out of guesses
+  if (guessesRemaining <= 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center"
+      >
+        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl">🤔</span>
+        </div>
+        <h3 className="font-display text-2xl font-bold text-gray-800 mb-2">No more guesses!</h3>
+        <p className="text-gray-600 mb-6">
+          This message is from <span className="font-bold gradient-text">{proposal.proposerName}</span>
+        </p>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onGiveUp}
+          className={`px-8 py-4 rounded-full font-bold text-white shadow-xl bg-gradient-to-r ${gradients[proposal.type]}`}
+        >
+          Continue to respond
+        </motion.button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-center"
+    >
+      <motion.div
+        animate={{ rotate: [0, 10, -10, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="text-6xl mb-6"
+      >
+        🎭
+      </motion.div>
+      
+      <h3 className="font-display text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+        Who could it be?
+      </h3>
+      <p className="text-gray-500 mb-8">
+        Guess their <span className="font-semibold">first name</span> to find out!
+      </p>
+
+      {/* Guess counter */}
+      <div className="flex justify-center gap-2 mb-6">
+        {[...Array(maxGuesses)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: i * 0.1 }}
+            className={`w-4 h-4 rounded-full ${
+              i < guessesUsed ? 'bg-gray-300' : 'bg-gradient-to-r from-rose-400 to-pink-400'
+            }`}
+          />
+        ))}
+      </div>
+      <p className="text-sm text-gray-400 mb-6">
+        {guessesRemaining} {guessesRemaining === 1 ? 'guess' : 'guesses'} remaining
+      </p>
+
+      {/* Wrong guess feedback */}
+      <AnimatePresence>
+        {lastGuessWrong && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-4 text-rose-500 font-medium"
+          >
+            Not quite! Try again...
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Input */}
+      <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mb-6">
+        <input
+          type="text"
+          placeholder="Enter their first name..."
+          value={guess}
+          onChange={(e) => setGuess(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleGuess()}
+          className="flex-1 px-6 py-4 bg-white/90 backdrop-blur-xl rounded-2xl border-2 border-transparent focus:border-rose-300 outline-none text-gray-900 placeholder-gray-400 text-center font-medium shadow-lg"
+          disabled={isSubmitting}
+        />
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleGuess}
+          disabled={!guess.trim() || isSubmitting}
+          className={`px-8 py-4 rounded-2xl font-bold text-white shadow-xl transition-all ${
+            guess.trim() && !isSubmitting
+              ? `bg-gradient-to-r ${gradients[proposal.type]}`
+              : 'bg-gray-300 cursor-not-allowed'
+          }`}
+        >
+          {isSubmitting ? '...' : 'Guess'}
+        </motion.button>
+      </div>
+
+      {/* Skip option */}
+      <button
+        onClick={onGiveUp}
+        className="text-gray-400 hover:text-gray-600 text-sm underline transition-colors"
+      >
+        I have no idea, just tell me
+      </button>
+    </motion.div>
   );
 };
 
@@ -259,6 +491,7 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
   const [revealed, setRevealed] = useState(false);
   const [response, setResponse] = useState<'yes' | 'no' | null>(null);
   const [showConfirmNo, setShowConfirmNo] = useState(false);
+  const [identityRevealed, setIdentityRevealed] = useState(false);
 
   useEffect(() => {
     async function fetchProposal() {
@@ -269,6 +502,11 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
           if (data.response) {
             setResponse(data.response);
             setRevealed(true);
+            setIdentityRevealed(true);
+          }
+          // If already guessed correctly or not anonymous, reveal identity
+          if (!data.isAnonymous || data.guessedCorrectly) {
+            setIdentityRevealed(true);
           }
         } else {
           setError(true);
@@ -365,13 +603,12 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
                   className="w-32 h-32 bg-white rounded-3xl shadow-2xl flex items-center justify-center mx-auto relative overflow-hidden"
                   whileHover={{ scale: 1.05, rotate: [0, -2, 2, 0] }}
                 >
-                  {/* Envelope shine effect */}
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
                     animate={{ x: ['-100%', '100%'] }}
                     transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
                   />
-                  <span className="text-6xl relative z-10">💌</span>
+                  <span className="text-6xl relative z-10">{proposal.isAnonymous ? '🎭' : '💌'}</span>
                 </motion.div>
               </motion.div>
               
@@ -390,8 +627,11 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
                 transition={{ delay: 0.5 }}
                 className="text-xl text-gray-600 mb-10"
               >
-                You have a special message from{' '}
-                <span className="font-bold gradient-text">{proposal.proposerName}</span>
+                {proposal.isAnonymous ? (
+                  <>You have a special message from <span className="font-bold gradient-text">a secret admirer</span> 🤫</>
+                ) : (
+                  <>You have a special message from <span className="font-bold gradient-text">{proposal.proposerName}</span></>
+                )}
               </motion.p>
               
               <motion.button
@@ -435,7 +675,6 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
                 transition={{ delay: 0.2, duration: 0.8 }}
                 className="bg-white/95 backdrop-blur-xl rounded-[32px] p-8 md:p-10 shadow-2xl mb-10 relative overflow-hidden"
               >
-                {/* Decorative corner */}
                 <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${gradients[proposal.type]} opacity-10 rounded-bl-full`} />
                 
                 <div className="relative z-10">
@@ -449,79 +688,93 @@ export default function ProposalPage({ params }: { params: Promise<{ id: string 
                   
                   <div className="text-right">
                     <p className="font-handwriting text-lg text-gray-400 mb-1">With love,</p>
-                    <p className="font-handwriting text-3xl gradient-text font-bold">{proposal.proposerName}</p>
+                    {proposal.isAnonymous && !identityRevealed ? (
+                      <p className="font-handwriting text-3xl text-gray-400 italic">Your Secret Admirer</p>
+                    ) : (
+                      <p className="font-handwriting text-3xl gradient-text font-bold">{proposal.proposerName}</p>
+                    )}
                   </div>
                 </div>
               </motion.div>
 
-              {/* The Question */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.6 }}
-                className="text-center"
-              >
+              {/* Guessing Game for Anonymous OR Question for Known */}
+              {proposal.isAnonymous && !identityRevealed ? (
+                <GuessingGame
+                  proposal={proposal}
+                  gradients={gradients}
+                  onCorrectGuess={() => setIdentityRevealed(true)}
+                  onGiveUp={() => setIdentityRevealed(true)}
+                />
+              ) : (
+                // The Question & Response Buttons
                 <motion.div
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="text-6xl mb-6"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="text-center"
                 >
-                  {config.emoji}
-                </motion.div>
-                
-                <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-10">
-                  {config.headline}
-                </h2>
-
-                {!showConfirmNo ? (
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleResponse('yes')}
-                      className={`
-                        relative px-12 py-5 rounded-full font-bold text-lg text-white shadow-2xl overflow-hidden
-                        bg-gradient-to-r ${gradients[proposal.type]} animate-pulse-glow
-                      `}
-                    >
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                        animate={{ x: ['-100%', '100%'] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      />
-                      <span className="relative z-10">{config.buttonYes}</span>
-                    </motion.button>
-                    
-                    <PlayfulNoButton
-                      onClick={() => setShowConfirmNo(true)}
-                      text={config.buttonNo}
-                      playful={config.animation === 'playful' || config.animation === 'cute'}
-                    />
-                  </div>
-                ) : (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-sm mx-auto shadow-xl"
+                    animate={{ scale: [1, 1.15, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="text-6xl mb-6"
                   >
-                    <p className="text-gray-700 mb-6">Are you sure about this?</p>
-                    <div className="flex gap-3 justify-center">
-                      <button
-                        onClick={() => setShowConfirmNo(false)}
-                        className={`px-6 py-3 bg-gradient-to-r ${gradients[proposal.type]} text-white rounded-full font-semibold`}
-                      >
-                        Wait, go back
-                      </button>
-                      <button
-                        onClick={() => handleResponse('no')}
-                        className="px-6 py-3 bg-gray-100 text-gray-600 rounded-full font-semibold hover:bg-gray-200 transition"
-                      >
-                        Yes, I&apos;m sure
-                      </button>
-                    </div>
+                    {config.emoji}
                   </motion.div>
-                )}
-              </motion.div>
+                  
+                  <h2 className="font-display text-3xl md:text-4xl font-bold text-gray-900 mb-10">
+                    {config.headline}
+                  </h2>
+
+                  {!showConfirmNo ? (
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleResponse('yes')}
+                        className={`
+                          relative px-12 py-5 rounded-full font-bold text-lg text-white shadow-2xl overflow-hidden
+                          bg-gradient-to-r ${gradients[proposal.type]} animate-pulse-glow
+                        `}
+                      >
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                          animate={{ x: ['-100%', '100%'] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        />
+                        <span className="relative z-10">{config.buttonYes}</span>
+                      </motion.button>
+                      
+                      <PlayfulNoButton
+                        onClick={() => setShowConfirmNo(true)}
+                        text={config.buttonNo}
+                        playful={config.animation === 'playful' || config.animation === 'cute'}
+                      />
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 max-w-sm mx-auto shadow-xl"
+                    >
+                      <p className="text-gray-700 mb-6">Are you sure about this?</p>
+                      <div className="flex gap-3 justify-center">
+                        <button
+                          onClick={() => setShowConfirmNo(false)}
+                          className={`px-6 py-3 bg-gradient-to-r ${gradients[proposal.type]} text-white rounded-full font-semibold`}
+                        >
+                          Wait, go back
+                        </button>
+                        <button
+                          onClick={() => handleResponse('no')}
+                          className="px-6 py-3 bg-gray-100 text-gray-600 rounded-full font-semibold hover:bg-gray-200 transition"
+                        >
+                          Yes, I&apos;m sure
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

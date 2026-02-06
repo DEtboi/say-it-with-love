@@ -102,6 +102,7 @@ function CreateFormContent() {
     recipientName: '',
     message: '',
     template: 'romantic' as TemplateId,
+    isAnonymous: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
@@ -122,6 +123,7 @@ function CreateFormContent() {
         recipientName: formData.recipientName,
         message: formData.message,
         template: formData.template,
+        isAnonymous: formData.isAnonymous,
       });
       
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -450,6 +452,47 @@ function CreateFormContent() {
                   className="w-full p-4 bg-gray-50/80 rounded-2xl border-2 border-transparent focus:border-rose-300 focus:bg-white outline-none transition-all text-gray-900 placeholder-gray-400"
                 />
               </div>
+
+              {/* Anonymous Toggle */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className={`p-5 rounded-2xl border-2 transition-all cursor-pointer ${
+                  formData.isAnonymous 
+                    ? `bg-gradient-to-r ${gradients[proposalType]} border-transparent` 
+                    : 'bg-gray-50/80 border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setFormData(prev => ({ ...prev, isAnonymous: !prev.isAnonymous }))}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      formData.isAnonymous ? 'bg-white/20' : 'bg-white'
+                    }`}>
+                      <span className="text-2xl">🎭</span>
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${formData.isAnonymous ? 'text-white' : 'text-gray-900'}`}>
+                        Send Anonymously
+                      </p>
+                      <p className={`text-sm ${formData.isAnonymous ? 'text-white/80' : 'text-gray-500'}`}>
+                        They&apos;ll have to guess who you are (3 tries!)
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`w-14 h-8 rounded-full p-1 transition-all ${
+                    formData.isAnonymous ? 'bg-white/30' : 'bg-gray-300'
+                  }`}>
+                    <motion.div 
+                      className={`w-6 h-6 rounded-full shadow-md ${
+                        formData.isAnonymous ? 'bg-white' : 'bg-white'
+                      }`}
+                      animate={{ x: formData.isAnonymous ? 24 : 0 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </motion.div>
         )}

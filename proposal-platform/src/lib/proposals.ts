@@ -36,10 +36,11 @@ export async function createProposal(form: CreateProposalForm): Promise<string> 
   const proposalData = {
     type: form.type,
     proposerName: form.proposerName,
-    proposerEmail: form.proposerEmail,
+    proposerEmail: form.proposerEmail || '',
     recipientName: form.recipientName,
     message: form.message,
     template: form.template,
+    isAnonymous: form.isAnonymous || false,
     createdAt: Timestamp.fromDate(now),
     expiresAt: Timestamp.fromDate(expiresAt),
   };
@@ -69,6 +70,9 @@ export async function getProposal(proposalId: string): Promise<Proposal | null> 
     recipientName: data.recipientName,
     message: data.message,
     template: data.template,
+    isAnonymous: data.isAnonymous || false,
+    guessesUsed: data.guessesUsed || 0,
+    guessedCorrectly: data.guessedCorrectly || false,
     createdAt: data.createdAt?.toDate() || new Date(),
     expiresAt: data.expiresAt?.toDate() || new Date(),
     response: data.response,
@@ -94,6 +98,38 @@ export async function recordResponse(
     response,
     respondedAt: serverTimestamp(),
   });
+}
+
+// Record a guess attempt and return if it was correct
+export async function recordGuess(
+  proposalId: string, 
+  guess: string, 
+  proposerName: string,
+  currentGuesses: number
+): Promise<{ correct: boolean; guessesUsed: number }> {
+  const docRef = doc(db, PROPOSALS_COLLECTION, proposalId);
+  const isCorrect = checkGuess(guess, proposerName);
+  const newGuessCount = currentGuesses + 1;
+  
+  if (isCorrect) {
+    await updateDoc(docRef, {
+      guessesUsed: newGuessCount,
+      guessedCorrectly: true,
+    });
+  } else {
+    await updateDoc(docRef, {
+      guessesUsed: newGuessCount,
+    });
+  }
+  
+  return { correct: isCorrect, guessesUsed: newGuessCount };
+}
+
+// Check if a guess matches the proposer's first name (case insensitive)
+export function checkGuess(guess: string, proposerName: string): boolean {
+  const guessLower = guess.trim().toLowerCase();
+  const firstName = proposerName.trim().split(' ')[0].toLowerCase();
+  return guessLower === firstName;
 }
 
 // Get remaining time until expiry
